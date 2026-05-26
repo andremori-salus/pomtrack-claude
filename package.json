@@ -1,0 +1,13 @@
+{
+  "name": "pomtrack",
+  "version": "1.0.0",
+  "description": "A slick, modern Pomodoro tracker.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "private": true
+}
