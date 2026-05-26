@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pomtrack — Focus Timer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-0: #0a0a0f;
+    --bg-1: #11111a;
+    --bg-2: #1a1a26;
+    --surface: rgba(255, 255, 255, 0.04);
+    --surface-hover: rgba(255, 255, 255, 0.08);
+    --border: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.16);
+    --text-0: #ffffff;
+    --text-1: #b4b4c7;
+    --text-2: #6c6c84;
+
+    --accent-focus: #ff5b6e;
+    --accent-focus-glow: rgba(255, 91, 110, 0.4);
+    --accent-short: #4ecdc4;
+    --accent-short-glow: rgba(78, 205, 196, 0.4);
+    --accent-long: #7c83fd;
+    --accent-long-glow: rgba(124, 131, 253, 0.4);
+
+    --accent: var(--accent-focus);
+    --accent-glow: var(--accent-focus-glow);
+
+    --shadow-lg: 0 30px 60px -15px rgba(0, 0, 0, 0.5);
+    --radius: 16px;
+    --radius-sm: 10px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    color: var(--text-0);
+    background: var(--bg-0);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  body {
+    background:
+      radial-gradient(ellipse 80% 60% at 50% -10%, var(--accent-glow), transparent 60%),
+      radial-gradient(ellipse 60% 40% at 100% 100%, rgba(124, 131, 253, 0.12), transparent 60%),
+      radial-gradient(ellipse 60% 40% at 0% 100%, rgba(78, 205, 196, 0.08), transparent 60%),
+      var(--bg-0);
+    min-height: 100vh;
+    transition: background 0.8s ease;
+  }
+
+  .app {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 32px 24px 80px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  header.topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 0 8px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    font-size: 18px;
+  }
+
+  .brand-logo {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-long));
+    display: grid;
+    place-items: center;
+    box-shadow: 0 6px 20px -6px var(--accent-glow);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .brand-logo::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.5), transparent 60%);
+  }
+
+  .brand-logo svg { width: 16px; height: 16px; color: white; position: relative; z-index: 1; }
+
+  .topbar-actions { display: flex; gap: 8px; }
+
+  .icon-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-1);
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(20px);
+  }
+  .icon-btn:hover {
+    background: var(--surface-hover);
+    color: var(--text-0);
+    border-color: var(--border-strong);
+    transform: translateY(-1px);
+  }
+  .icon-btn svg { width: 18px; height: 18px; }
+
+  /* Main grid */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 24px;
+  }
+
+  @media (max-width: 880px) {
+    .main-grid { grid-template-columns: 1fr; }
+  }
+
+  .card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+  }
+
+  /* Timer card */
+  .timer-card {
+    padding: 28px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    position: relative;
+  }
+
+  .mode-tabs {
+    display: inline-flex;
+    background: rgba(0,0,0,0.3);
+    border-radius: 12px;
+    padding: 4px;
+    gap: 2px;
+    border: 1px solid var(--border);
+  }
+
+  .mode-tab {
+    padding: 9px 18px;
+    border-radius: 9px;
+    border: none;
+    background: transparent;
+    color: var(--text-2);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    white-space: nowrap;
+  }
+  .mode-tab:hover { color: var(--text-1); }
+  .mode-tab.active {
+    background: var(--surface);
+    color: var(--text-0);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+
+  /* Circular timer */
+  .timer-ring-wrap {
+    position: relative;
+    width: min(360px, 70vw);
+    aspect-ratio: 1;
+    display: grid;
+    place-items: center;
+  }
+
+  .timer-ring {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+    filter: drop-shadow(0 0 30px var(--accent-glow));
+  }
+
+  .timer-ring circle {
+    fill: none;
+    stroke-width: 6;
+    stroke-linecap: round;
+  }
+
+  .ring-bg { stroke: rgba(255,255,255,0.06); }
+
+  .ring-progress {
+    stroke: url(#ringGrad);
+    transition: stroke-dashoffset 1s linear;
+  }
+
+  .timer-display {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    pointer-events: none;
+  }
+
+  .timer-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(48px, 11vw, 84px);
+    font-weight: 300;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    color: var(--text-0);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .timer-label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--text-2);
+    font-weight: 500;
+  }
+
+  .timer-task {
+    font-size: 13px;
+    color: var(--text-1);
+    max-width: 80%;
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-top: 4px;
+  }
+
+  /* Controls */
+  .timer-controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .btn {
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 75%, black));
+    color: white;
+    padding: 14px 36px;
+    border-radius: 999px;
+    font-size: 15px;
+    letter-spacing: 0.02em;
+    box-shadow: 0 10px 30px -10px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.2);
+    min-width: 140px;
+    justify-content: center;
+  }
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 40px -10px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.2);
+  }
+  .btn-primary:active { transform: translateY(0); }
+
+  .btn-ghost {
+    background: var(--surface);
+    color: var(--text-1);
+    border: 1px solid var(--border);
+    padding: 12px;
+    border-radius: 12px;
+    width: 44px;
+    height: 44px;
+    justify-content: center;
+  }
+  .btn-ghost:hover {
+    background: var(--surface-hover);
+    color: var(--text-0);
+    border-color: var(--border-strong);
+  }
+  .btn-ghost svg { width: 18px; height: 18px; }
+
+  .session-dots {
+    display: flex;
+    gap: 6px;
+    margin-top: 4px;
+  }
+  .session-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.1);
+    transition: all 0.3s ease;
+  }
+  .session-dot.complete {
+    background: var(--accent);
+    box-shadow: 0 0 10px var(--accent-glow);
+  }
+  .session-dot.current {
+    background: var(--accent);
+    transform: scale(1.3);
+  }
+
+  /* Sidebar */
+  .sidebar {
+    display: grid;
+    gap: 24px;
+    grid-template-rows: auto 1fr;
+  }
+
+  .stats-card { padding: 22px; }
+
+  .stats-title {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--text-2);
+    font-weight: 600;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  .stat {
+    background: rgba(0,0,0,0.25);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+  }
+  .stat-value {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  .stat-label {
+    font-size: 11px;
+    color: var(--text-2);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-top: 4px;
+    font-weight: 500;
+  }
+
+  /* Tasks */
+  .tasks-card {
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    min-height: 280px;
+  }
+
+  .tasks-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .tasks-header h3 {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .tasks-count {
+    font-size: 11px;
+    color: var(--text-2);
+    background: var(--surface);
+    padding: 3px 9px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+  }
+
+  .task-input-wrap {
+    position: relative;
+    margin-bottom: 12px;
+  }
+  .task-input {
+    width: 100%;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    color: var(--text-0);
+    font-family: inherit;
+    font-size: 14px;
+    transition: all 0.2s ease;
+  }
+  .task-input::placeholder { color: var(--text-2); }
+  .task-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    background: rgba(0,0,0,0.4);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+
+  .task-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow-y: auto;
+    max-height: 320px;
+    margin: 0 -6px;
+    padding: 0 6px;
+  }
+  .task-list::-webkit-scrollbar { width: 6px; }
+  .task-list::-webkit-scrollbar-track { background: transparent; }
+  .task-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+
+  .task-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    background: rgba(0,0,0,0.2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    transition: all 0.2s ease;
+    cursor: pointer;
+  }
+  .task-item:hover { background: rgba(0,0,0,0.35); border-color: var(--border-strong); }
+
+  .task-item.active {
+    border-color: var(--accent);
+    background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 12%, transparent), rgba(0,0,0,0.25));
+    box-shadow: inset 0 0 0 1px var(--accent-glow);
+  }
+
+  .task-check {
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    border: 1.5px solid var(--border-strong);
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    transition: all 0.2s ease;
+    background: transparent;
+    cursor: pointer;
+  }
+  .task-check:hover { border-color: var(--accent); }
+  .task-item.done .task-check {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+  .task-check svg {
+    width: 12px;
+    height: 12px;
+    color: white;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+  .task-item.done .task-check svg { opacity: 1; }
+
+  .task-text {
+    flex: 1;
+    font-size: 14px;
+    color: var(--text-0);
+    transition: all 0.2s ease;
+    word-break: break-word;
+  }
+  .task-item.done .task-text {
+    color: var(--text-2);
+    text-decoration: line-through;
+  }
+
+  .task-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-2);
+    background: rgba(255,255,255,0.05);
+    padding: 3px 7px;
+    border-radius: 6px;
+    flex-shrink: 0;
+  }
+
+  .task-delete {
+    background: none;
+    border: none;
+    color: var(--text-2);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 6px;
+    opacity: 0;
+    transition: all 0.2s ease;
+    display: grid;
+    place-items: center;
+  }
+  .task-item:hover .task-delete { opacity: 1; }
+  .task-delete:hover { color: #ff6b6b; background: rgba(255,107,107,0.1); }
+  .task-delete svg { width: 14px; height: 14px; }
+
+  .empty-tasks {
+    color: var(--text-2);
+    font-size: 13px;
+    text-align: center;
+    padding: 30px 20px;
+    font-style: italic;
+  }
+
+  /* Modal */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(8px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 20px;
+    animation: fadeIn 0.2s ease;
+  }
+  .modal-backdrop.open { display: flex; }
+
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  .modal {
+    background: var(--bg-1);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    padding: 28px;
+    max-width: 440px;
+    width: 100%;
+    box-shadow: var(--shadow-lg);
+    animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .modal h2 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 22px;
+    letter-spacing: -0.01em;
+  }
+
+  .setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+    gap: 16px;
+  }
+  .setting-row:last-of-type { border-bottom: none; }
+
+  .setting-label {
+    font-size: 14px;
+    color: var(--text-1);
+  }
+  .setting-label small {
+    display: block;
+    color: var(--text-2);
+    font-size: 11px;
+    margin-top: 2px;
+  }
+
+  .num-input {
+    width: 80px;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    color: var(--text-0);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    text-align: center;
+  }
+  .num-input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+
+  .toggle {
+    position: relative;
+    width: 42px;
+    height: 24px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid var(--border);
+  }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.2s ease;
+  }
+  .toggle.on { background: var(--accent); border-color: var(--accent); }
+  .toggle.on::after { transform: translateX(18px); }
+
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 24px;
+    justify-content: flex-end;
+  }
+  .btn-secondary {
+    background: var(--surface);
+    color: var(--text-1);
+    border: 1px solid var(--border);
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-size: 14px;
+  }
+  .btn-secondary:hover { background: var(--surface-hover); color: var(--text-0); }
+  .btn-modal-primary {
+    background: var(--accent);
+    color: white;
+    padding: 10px 22px;
+    border-radius: 10px;
+    font-size: 14px;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--bg-2);
+    border: 1px solid var(--border-strong);
+    color: var(--text-0);
+    padding: 12px 22px;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 500;
+    box-shadow: var(--shadow-lg);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 200;
+    pointer-events: none;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* Mode-specific accent colors via data attribute on body */
+  body[data-mode="focus"] { --accent: var(--accent-focus); --accent-glow: var(--accent-focus-glow); }
+  body[data-mode="short"] { --accent: var(--accent-short); --accent-glow: var(--accent-short-glow); }
+  body[data-mode="long"]  { --accent: var(--accent-long);  --accent-glow: var(--accent-long-glow); }
+
+  /* subtle running pulse */
+  @keyframes breathe {
+    0%, 100% { filter: drop-shadow(0 0 30px var(--accent-glow)); }
+    50%      { filter: drop-shadow(0 0 50px var(--accent-glow)); }
+  }
+  .timer-ring.running { animation: breathe 4s ease-in-out infinite; }
+</style>
+</head>
+<body data-mode="focus">
+
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="13" r="8"/>
+          <path d="M12 9v4l2 2"/>
+          <path d="M9 2h6"/>
+        </svg>
+      </div>
+      <span>Pomtrack</span>
+    </div>
+    <div class="topbar-actions">
+      <button class="icon-btn" id="soundToggle" title="Toggle sound">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+        </svg>
+      </button>
+      <button class="icon-btn" id="settingsBtn" title="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="main-grid">
+    <!-- Timer -->
+    <div class="card timer-card">
+      <div class="mode-tabs" role="tablist">
+        <button class="mode-tab active" data-mode="focus">Focus</button>
+        <button class="mode-tab" data-mode="short">Short Break</button>
+        <button class="mode-tab" data-mode="long">Long Break</button>
+      </div>
+
+      <div class="timer-ring-wrap">
+        <svg class="timer-ring" viewBox="0 0 200 200" id="ringSvg">
+          <defs>
+            <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="var(--accent)"/>
+              <stop offset="100%" stop-color="var(--accent)" stop-opacity="0.5"/>
+            </linearGradient>
+          </defs>
+          <circle class="ring-bg" cx="100" cy="100" r="92"/>
+          <circle class="ring-progress" cx="100" cy="100" r="92" id="ringProgress"
+                  stroke-dasharray="578.05" stroke-dashoffset="0"/>
+        </svg>
+        <div class="timer-display">
+          <div class="timer-label" id="timerLabel">Focus</div>
+          <div class="timer-time" id="timerTime">25:00</div>
+          <div class="timer-task" id="timerTask"></div>
+        </div>
+      </div>
+
+      <div class="timer-controls">
+        <button class="btn btn-ghost" id="resetBtn" title="Reset">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12a9 9 0 1 0 3-6.7L3 8"/>
+            <path d="M3 3v5h5"/>
+          </svg>
+        </button>
+        <button class="btn btn-primary" id="startBtn">Start</button>
+        <button class="btn btn-ghost" id="skipBtn" title="Skip">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="5 4 15 12 5 20 5 4"/>
+            <line x1="19" y1="5" x2="19" y2="19"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="session-dots" id="sessionDots"></div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="card stats-card">
+        <div class="stats-title">
+          <span>Today</span>
+          <button class="icon-btn" id="resetStatsBtn" title="Reset today's stats" style="width:28px;height:28px;border-radius:8px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;">
+              <path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>
+            </svg>
+          </button>
+        </div>
+        <div class="stats-grid">
+          <div class="stat">
+            <div class="stat-value" id="statPomos">0</div>
+            <div class="stat-label">Pomodoros</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="statFocus">0m</div>
+            <div class="stat-label">Focus Time</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="statTasks">0</div>
+            <div class="stat-label">Tasks Done</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="statStreak">0</div>
+            <div class="stat-label">Day Streak</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card tasks-card">
+        <div class="tasks-header">
+          <h3>Tasks</h3>
+          <span class="tasks-count" id="tasksCount">0 active</span>
+        </div>
+        <form id="taskForm" class="task-input-wrap">
+          <input type="text" class="task-input" id="taskInput" placeholder="Add a task and press Enter…" maxlength="120" />
+        </form>
+        <ul class="task-list" id="taskList"></ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Settings modal -->
+<div class="modal-backdrop" id="settingsModal">
+  <div class="modal">
+    <h2>Settings</h2>
+    <div class="setting-row">
+      <div class="setting-label">Focus duration <small>minutes</small></div>
+      <input type="number" class="num-input" id="setFocus" min="1" max="180" />
+    </div>
+    <div class="setting-row">
+      <div class="setting-label">Short break <small>minutes</small></div>
+      <input type="number" class="num-input" id="setShort" min="1" max="60" />
+    </div>
+    <div class="setting-row">
+      <div class="setting-label">Long break <small>minutes</small></div>
+      <input type="number" class="num-input" id="setLong" min="1" max="60" />
+    </div>
+    <div class="setting-row">
+      <div class="setting-label">Long break interval <small>after N pomodoros</small></div>
+      <input type="number" class="num-input" id="setInterval" min="2" max="10" />
+    </div>
+    <div class="setting-row">
+      <div class="setting-label">Auto-start breaks <small>begin breaks automatically</small></div>
+      <div class="toggle" id="setAutoBreak"></div>
+    </div>
+    <div class="setting-row">
+      <div class="setting-label">Auto-start pomodoros <small>continue after breaks</small></div>
+      <div class="toggle" id="setAutoPomo"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" id="cancelSettings">Cancel</button>
+      <button class="btn btn-modal-primary" id="saveSettings">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+
+  const MODES = {
+    focus: { label: 'Focus',       defaultMin: 25 },
+    short: { label: 'Short Break', defaultMin: 5  },
+    long:  { label: 'Long Break',  defaultMin: 15 },
+  };
+
+  const defaultState = {
+    settings: {
+      focus: 25, short: 5, long: 15,
+      interval: 4,
+      autoBreak: true,
+      autoPomo: false,
+      sound: true,
+    },
+    mode: 'focus',
+    sessionsCompleted: 0,
+    cycleIndex: 0,
+    stats: {
+      date: todayKey(),
+      pomos: 0,
+      focusSeconds: 0,
+      tasksDone: 0,
+      streak: 0,
+      lastActiveDate: null,
+    },
+    tasks: [],
+    activeTaskId: null,
+  };
+
+  let state = loadState();
+  let timer = {
+    running: false,
+    remaining: 0,
+    total: 0,
+    intervalId: null,
+    endAt: null,
+  };
+
+  function todayKey() {
+    const d = new Date();
+    return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
+  }
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem('pomtrack:v1');
+      if (!raw) return structuredClone(defaultState);
+      const parsed = JSON.parse(raw);
+      const merged = { ...structuredClone(defaultState), ...parsed,
+        settings: { ...defaultState.settings, ...(parsed.settings || {}) },
+        stats: { ...defaultState.stats, ...(parsed.stats || {}) },
+      };
+      // Reset stats if new day
+      if (merged.stats.date !== todayKey()) {
+        // streak update
+        const prev = merged.stats.date;
+        if (prev) {
+          const prevDate = new Date(prev);
+          const today = new Date(todayKey());
+          const diffDays = Math.round((today - prevDate) / 86400000);
+          if (merged.stats.pomos > 0 && diffDays === 1) {
+            merged.stats.streak = (merged.stats.streak || 0) + 1;
+          } else if (diffDays > 1) {
+            merged.stats.streak = 0;
+          }
+        }
+        merged.stats.date = todayKey();
+        merged.stats.pomos = 0;
+        merged.stats.focusSeconds = 0;
+        merged.stats.tasksDone = 0;
+      }
+      return merged;
+    } catch (e) {
+      return structuredClone(defaultState);
+    }
+  }
+
+  function saveState() {
+    localStorage.setItem('pomtrack:v1', JSON.stringify(state));
+  }
+
+  function currentDurationSeconds() {
+    return state.settings[state.mode] * 60;
+  }
+
+  function setMode(mode, { resetTimer = true } = {}) {
+    state.mode = mode;
+    document.body.dataset.mode = mode;
+    $('timerLabel').textContent = MODES[mode].label;
+    document.querySelectorAll('.mode-tab').forEach(t => {
+      t.classList.toggle('active', t.dataset.mode === mode);
+    });
+    if (resetTimer) {
+      stopTimer();
+      timer.remaining = currentDurationSeconds();
+      timer.total = timer.remaining;
+      renderTimer();
+    }
+    saveState();
+  }
+
+  function fmt(sec) {
+    sec = Math.max(0, Math.round(sec));
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
+
+  function renderTimer() {
+    $('timerTime').textContent = fmt(timer.remaining);
+    const circumference = 578.05;
+    const progress = timer.total > 0 ? (1 - timer.remaining / timer.total) : 0;
+    $('ringProgress').style.strokeDashoffset = String(circumference * progress);
+
+    // Update document title
+    document.title = `${fmt(timer.remaining)} — ${MODES[state.mode].label} · Pomtrack`;
+
+    const activeTask = state.tasks.find(t => t.id === state.activeTaskId);
+    $('timerTask').textContent = (state.mode === 'focus' && activeTask) ? `→ ${activeTask.text}` : '';
+  }
+
+  function renderSessionDots() {
+    const dots = $('sessionDots');
+    dots.innerHTML = '';
+    const n = state.settings.interval;
+    const current = state.cycleIndex % n;
+    for (let i = 0; i < n; i++) {
+      const d = document.createElement('div');
+      d.className = 'session-dot';
+      if (i < current) d.classList.add('complete');
+      if (i === current && state.mode === 'focus') d.classList.add('current');
+      dots.appendChild(d);
+    }
+  }
+
+  function startTimer() {
+    if (timer.running) return;
+    if (timer.remaining <= 0) timer.remaining = currentDurationSeconds();
+    timer.total = currentDurationSeconds();
+    if (!timer.total) timer.total = timer.remaining;
+
+    timer.running = true;
+    timer.endAt = Date.now() + timer.remaining * 1000;
+    $('startBtn').textContent = 'Pause';
+    $('ringSvg').classList.add('running');
+
+    timer.intervalId = setInterval(tick, 250);
+  }
+
+  function pauseTimer() {
+    if (!timer.running) return;
+    timer.running = false;
+    clearInterval(timer.intervalId);
+    timer.intervalId = null;
+    $('startBtn').textContent = 'Resume';
+    $('ringSvg').classList.remove('running');
+  }
+
+  function stopTimer() {
+    timer.running = false;
+    clearInterval(timer.intervalId);
+    timer.intervalId = null;
+    $('startBtn').textContent = 'Start';
+    $('ringSvg').classList.remove('running');
+  }
+
+  function resetTimer() {
+    stopTimer();
+    timer.remaining = currentDurationSeconds();
+    timer.total = timer.remaining;
+    renderTimer();
+  }
+
+  function tick() {
+    if (!timer.running) return;
+    const remainingMs = timer.endAt - Date.now();
+    const newRem = Math.max(0, Math.ceil(remainingMs / 1000));
+    if (newRem !== timer.remaining) {
+      // Track focus seconds passively
+      if (state.mode === 'focus') {
+        const delta = timer.remaining - newRem;
+        if (delta > 0) {
+          state.stats.focusSeconds += delta;
+          renderStats();
+        }
+      }
+      timer.remaining = newRem;
+      renderTimer();
+    }
+    if (remainingMs <= 0) {
+      completeSession();
+    }
+  }
+
+  function completeSession() {
+    stopTimer();
+    playBell();
+
+    if (state.mode === 'focus') {
+      state.stats.pomos += 1;
+      state.cycleIndex += 1;
+      // bump active task
+      if (state.activeTaskId) {
+        const t = state.tasks.find(x => x.id === state.activeTaskId);
+        if (t) t.pomos = (t.pomos || 0) + 1;
+      }
+      const isLong = state.cycleIndex % state.settings.interval === 0;
+      const nextMode = isLong ? 'long' : 'short';
+      showToast(`Pomodoro complete! Time for a ${isLong ? 'long' : 'short'} break.`);
+      setMode(nextMode);
+      if (state.settings.autoBreak) setTimeout(startTimer, 800);
+    } else {
+      showToast('Break over — back to focus!');
+      setMode('focus');
+      if (state.settings.autoPomo) setTimeout(startTimer, 800);
+    }
+
+    renderStats();
+    renderSessionDots();
+    renderTasks();
+    saveState();
+
+    if ('Notification' in window && Notification.permission === 'granted') {
+      try { new Notification('Pomtrack', { body: state.mode === 'focus' ? 'Break finished — time to focus!' : 'Pomodoro done — take a break!' }); } catch {}
+    }
+  }
+
+  // Audio - synth bell, no asset needed
+  let audioCtx;
+  function playBell() {
+    if (!state.settings.sound) return;
+    try {
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      const now = audioCtx.currentTime;
+      [880, 1320, 1760].forEach((freq, i) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0, now + i * 0.08);
+        gain.gain.linearRampToValueAtTime(0.18, now + i * 0.08 + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.7);
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start(now + i * 0.08);
+        osc.stop(now + i * 0.08 + 0.75);
+      });
+    } catch {}
+  }
+
+  function renderStats() {
+    $('statPomos').textContent = state.stats.pomos;
+    const mins = Math.round(state.stats.focusSeconds / 60);
+    if (mins >= 60) {
+      const h = Math.floor(mins / 60);
+      const m = mins % 60;
+      $('statFocus').textContent = `${h}h ${m}m`;
+    } else {
+      $('statFocus').textContent = `${mins}m`;
+    }
+    $('statTasks').textContent = state.stats.tasksDone;
+    $('statStreak').textContent = state.stats.streak;
+  }
+
+  // Tasks
+  function renderTasks() {
+    const ul = $('taskList');
+    ul.innerHTML = '';
+    if (state.tasks.length === 0) {
+      const li = document.createElement('li');
+      li.className = 'empty-tasks';
+      li.textContent = 'No tasks yet. Add one to get focused.';
+      ul.appendChild(li);
+    } else {
+      state.tasks.forEach(task => {
+        const li = document.createElement('li');
+        li.className = 'task-item' + (task.done ? ' done' : '') + (task.id === state.activeTaskId ? ' active' : '');
+        li.dataset.id = task.id;
+
+        const check = document.createElement('button');
+        check.className = 'task-check';
+        check.setAttribute('aria-label', 'Toggle done');
+        check.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+        check.addEventListener('click', (e) => { e.stopPropagation(); toggleDone(task.id); });
+
+        const text = document.createElement('span');
+        text.className = 'task-text';
+        text.textContent = task.text;
+
+        const meta = document.createElement('span');
+        meta.className = 'task-meta';
+        meta.textContent = `${task.pomos || 0}🍅`;
+
+        const del = document.createElement('button');
+        del.className = 'task-delete';
+        del.setAttribute('aria-label', 'Delete task');
+        del.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>';
+        del.addEventListener('click', (e) => { e.stopPropagation(); deleteTask(task.id); });
+
+        li.append(check, text, meta, del);
+        li.addEventListener('click', () => setActiveTask(task.id));
+        ul.appendChild(li);
+      });
+    }
+    const active = state.tasks.filter(t => !t.done).length;
+    $('tasksCount').textContent = `${active} active`;
+  }
+
+  function addTask(text) {
+    text = text.trim();
+    if (!text) return;
+    const task = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      text, done: false, pomos: 0, createdAt: Date.now(),
+    };
+    state.tasks.push(task);
+    if (!state.activeTaskId) state.activeTaskId = task.id;
+    saveState();
+    renderTasks();
+    renderTimer();
+  }
+
+  function toggleDone(id) {
+    const t = state.tasks.find(x => x.id === id);
+    if (!t) return;
+    t.done = !t.done;
+    if (t.done) state.stats.tasksDone += 1;
+    else state.stats.tasksDone = Math.max(0, state.stats.tasksDone - 1);
+    if (t.done && state.activeTaskId === id) {
+      const next = state.tasks.find(x => !x.done && x.id !== id);
+      state.activeTaskId = next ? next.id : null;
+    }
+    saveState();
+    renderTasks();
+    renderStats();
+    renderTimer();
+  }
+
+  function deleteTask(id) {
+    state.tasks = state.tasks.filter(t => t.id !== id);
+    if (state.activeTaskId === id) {
+      const next = state.tasks.find(t => !t.done);
+      state.activeTaskId = next ? next.id : null;
+    }
+    saveState();
+    renderTasks();
+    renderTimer();
+  }
+
+  function setActiveTask(id) {
+    const t = state.tasks.find(x => x.id === id);
+    if (!t || t.done) return;
+    state.activeTaskId = (state.activeTaskId === id) ? null : id;
+    saveState();
+    renderTasks();
+    renderTimer();
+  }
+
+  // Toast
+  let toastTimer;
+  function showToast(msg) {
+    const el = $('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+  }
+
+  // Settings modal
+  function openSettings() {
+    $('setFocus').value = state.settings.focus;
+    $('setShort').value = state.settings.short;
+    $('setLong').value = state.settings.long;
+    $('setInterval').value = state.settings.interval;
+    $('setAutoBreak').classList.toggle('on', state.settings.autoBreak);
+    $('setAutoPomo').classList.toggle('on', state.settings.autoPomo);
+    $('settingsModal').classList.add('open');
+  }
+  function closeSettings() { $('settingsModal').classList.remove('open'); }
+
+  function saveSettings() {
+    const focus = clamp(parseInt($('setFocus').value, 10) || 25, 1, 180);
+    const short = clamp(parseInt($('setShort').value, 10) || 5, 1, 60);
+    const long  = clamp(parseInt($('setLong').value, 10)  || 15, 1, 60);
+    const interval = clamp(parseInt($('setInterval').value, 10) || 4, 2, 10);
+    state.settings.focus = focus;
+    state.settings.short = short;
+    state.settings.long  = long;
+    state.settings.interval = interval;
+    state.settings.autoBreak = $('setAutoBreak').classList.contains('on');
+    state.settings.autoPomo  = $('setAutoPomo').classList.contains('on');
+    saveState();
+    closeSettings();
+    resetTimer();
+    renderSessionDots();
+    showToast('Settings saved');
+  }
+  function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
+
+  // Event listeners
+  document.querySelectorAll('.mode-tab').forEach(tab => {
+    tab.addEventListener('click', () => setMode(tab.dataset.mode));
+  });
+
+  $('startBtn').addEventListener('click', () => {
+    // Request notification permission on first interaction
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+    if (timer.running) pauseTimer();
+    else startTimer();
+  });
+  $('resetBtn').addEventListener('click', resetTimer);
+  $('skipBtn').addEventListener('click', () => {
+    if (confirm('Skip this session?')) completeSession();
+  });
+
+  $('settingsBtn').addEventListener('click', openSettings);
+  $('cancelSettings').addEventListener('click', closeSettings);
+  $('saveSettings').addEventListener('click', saveSettings);
+  $('settingsModal').addEventListener('click', (e) => {
+    if (e.target === $('settingsModal')) closeSettings();
+  });
+  $('setAutoBreak').addEventListener('click', (e) => e.currentTarget.classList.toggle('on'));
+  $('setAutoPomo').addEventListener('click',  (e) => e.currentTarget.classList.toggle('on'));
+
+  $('soundToggle').addEventListener('click', () => {
+    state.settings.sound = !state.settings.sound;
+    saveState();
+    showToast(state.settings.sound ? 'Sound on' : 'Sound off');
+  });
+
+  $('resetStatsBtn').addEventListener('click', () => {
+    if (!confirm('Reset today\'s stats?')) return;
+    state.stats.pomos = 0;
+    state.stats.focusSeconds = 0;
+    state.stats.tasksDone = 0;
+    state.cycleIndex = 0;
+    saveState();
+    renderStats();
+    renderSessionDots();
+    showToast('Stats reset');
+  });
+
+  $('taskForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const input = $('taskInput');
+    addTask(input.value);
+    input.value = '';
+  });
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', (e) => {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    if (e.code === 'Space') { e.preventDefault(); $('startBtn').click(); }
+    else if (e.key === 'r' || e.key === 'R') resetTimer();
+    else if (e.key === '1') setMode('focus');
+    else if (e.key === '2') setMode('short');
+    else if (e.key === '3') setMode('long');
+    else if (e.key === 'Escape') closeSettings();
+  });
+
+  // Init
+  setMode(state.mode, { resetTimer: true });
+  renderStats();
+  renderSessionDots();
+  renderTasks();
+})();
+</script>
+
+</body>
+</html>
